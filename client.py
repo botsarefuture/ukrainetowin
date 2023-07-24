@@ -76,6 +76,9 @@ def brute_force_password(server_ip):
             if result == 0:
                 return
 
+            if result == 4:
+                return
+            
             if result == 1:
                 continue
 
@@ -122,6 +125,10 @@ def ssh_login(server_ip, username, password):
             return 4  # Connection error, potentially banned
         elif "timed out" in str(e):
             return 6  # Connection timed out
+        
+        elif "Unable to connect to port 22" in str(e):
+            return 4
+        
         else:
             return 0  # Other SSHException occurred
 
