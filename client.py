@@ -68,7 +68,7 @@ def brute_force_password(server_ip):
 
     times = 0
 
-    for length in range(1, 13):
+    for length in range(7, 13):
         for combination in itertools.product(alphabet, repeat=length):
             guess = ''.join(combination)
             print({"ip": server_ip, "guess": guess})
