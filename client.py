@@ -8,6 +8,8 @@ import threading
 import subprocess
 import sys
 
+USERS = ["root"]
+
 # Function to fetch updates from GitHub if available
 def update_script_from_github():
     try:
