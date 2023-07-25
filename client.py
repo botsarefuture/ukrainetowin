@@ -11,7 +11,7 @@ import logging
 import os
 
 # Logging setup
-logging.basicConfig(filename="client.log", level=logging.INFO,
+logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 # Hardcoded settings
@@ -170,10 +170,12 @@ class Client():
             elif "Error reading SSH protocol banner" in str(e):
                 return 4  # Connection error, potentially banned
             elif "timed out" in str(e):
+                logging.warning("Connection timed out")
                 return 6  # Connection timed out
 
             elif "Unable to connect to port 22" in str(e):
                 self.send_ban_to_server()
+                logging.critical("We're banned from port 22")
                 return 4  # Probably banned
 
             else:
@@ -186,10 +188,12 @@ class Client():
                                      "guess": self.guess, "error": str(e)}))
 
             if "timed out" in str(e):
+                logging.warning("Connection timed out")
                 return 6  # Connection timed out
 
             elif "Unable to connect to port 22" in str(e):
                 self.send_ban_to_server()
+                logging.critical("We're banned from port 22")
                 return 4
 
             return 0  # Other exceptions occurred
