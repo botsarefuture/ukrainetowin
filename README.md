@@ -1,7 +1,3 @@
-Here's a `README.md` for your project. It describes the purpose of the project, how to set it up, and how to use it. Feel free to adjust the details to better fit your project specifics.
-
----
-
 # Brute-Force SSH Client
 
 ## Overview
