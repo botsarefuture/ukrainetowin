@@ -16,17 +16,24 @@ TIMEOUT: List[str] = []
 BAN: List[str] = []
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-log = logging.getLogger('werkzeug')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 
 def save_data():
     """Save the current state to 'info.json'."""
     data = {
-        "CREDS": CREDS, "USERS": USERS, "RANGE_ID": RANGE_ID,
-        "NOT_PASSWORD": NOT_PASSWORD, "RANGES": RANGES,
-        "IPS": IPS, "TIMEOUT": TIMEOUT, "BAN": BAN
+        "CREDS": CREDS,
+        "USERS": USERS,
+        "RANGE_ID": RANGE_ID,
+        "NOT_PASSWORD": NOT_PASSWORD,
+        "RANGES": RANGES,
+        "IPS": IPS,
+        "TIMEOUT": TIMEOUT,
+        "BAN": BAN,
     }
     with open("info.json", "w") as f:
         json.dump(data, f, indent=4)
@@ -77,8 +84,12 @@ def receive_error():
         abort(400, description="Missing fields in request.")
 
     with open("errors.log", "a") as f:
-        log_entry = {"target_ip": data["target_ip"], "username": data["username"],
-                     "guess": data["guess"], "error": data["error"]}
+        log_entry = {
+            "target_ip": data["target_ip"],
+            "username": data["username"],
+            "guess": data["guess"],
+            "error": data["error"],
+        }
         f.write(json.dumps(log_entry) + "\n")
     logging.info(f"Error received: {log_entry}")
     return jsonify({"status": "success"})
@@ -90,9 +101,12 @@ def receive_result():
     data = request.get_json()
     if not all(k in data for k in ("target_ip", "success", "username", "password")):
         abort(400, description="Missing fields in request.")
-    
+
     if data["success"]:
-        CREDS[data["target_ip"]] = {"password": data["password"], "username": data["username"]}
+        CREDS[data["target_ip"]] = {
+            "password": data["password"],
+            "username": data["username"],
+        }
 
     return jsonify({"message": "Result received successfully."})
 
@@ -103,7 +117,7 @@ def receive_timeout():
     data = request.get_json()
     if "target_ip" not in data:
         abort(400, description="Missing target_ip field in request.")
-    
+
     TIMEOUT.append(data["target_ip"])
     logging.info(f"Timeout received for IP: {data['target_ip']}")
     return jsonify({"message": "Timeout received successfully."})
@@ -115,7 +129,7 @@ def receive_ban():
     data = request.get_json()
     if "target_ip" not in data:
         abort(400, description="Missing target_ip field in request.")
-    
+
     BAN.append(data["target_ip"])
     logging.info(f"Ban received for IP: {data['target_ip']}")
     return jsonify({"message": "Ban received successfully."})
